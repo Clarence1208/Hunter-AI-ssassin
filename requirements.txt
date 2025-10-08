@@ -1,0 +1,18 @@
+# Hunter Assassin Game - Dependencies
+# Python 3.8+ required
+
+# Core game engine
+arcade>=3.3.2
+
+# For RL and numerical operations
+numpy>=1.21.0
+
+# Optional: For RL training (uncomment if needed)
+# gymnasium>=0.29.0
+# stable-baselines3>=2.0.0
+# torch>=2.0.0
+# tensorboard>=2.13.0
+
+# Optional: For visualization and plotting
+# matplotlib>=3.5.0
+# pygame>=2.5.0
