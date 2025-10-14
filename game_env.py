@@ -54,6 +54,11 @@ class HunterAssassinEnv(arcade.Window):
         self.obstacles: arcade.SpriteList = arcade.SpriteList()
         self.bullets: List[Bullet] = []
         
+        # Map dimensions for pathfinding
+        self.grid_width = config.MAP_TILES_WIDTH if hasattr(config, 'MAP_TILES_WIDTH') else 16
+        self.grid_height = config.MAP_TILES_HEIGHT if hasattr(config, 'MAP_TILES_HEIGHT') else 16
+        self.tile_size = config.TILE_SIZE if hasattr(config, 'TILE_SIZE') else 50
+        
         # Game state
         self.episode_step = 0
         self.total_reward = 0.0
@@ -99,7 +104,9 @@ class HunterAssassinEnv(arcade.Window):
         self.game_started = not config.PAUSE_UNTIL_FIRST_MOVE
         
         # Create obstacles and entities based on layout mode
-        if config.USE_APARTMENT_LAYOUT:
+        if config.USE_JSON_MAP:
+            self._generate_json_map()
+        elif hasattr(config, 'USE_APARTMENT_LAYOUT') and config.USE_APARTMENT_LAYOUT:
             self._generate_apartment_layout()
         else:
             self._generate_random_layout()
@@ -144,7 +151,14 @@ class HunterAssassinEnv(arcade.Window):
         if self.game_started:
             for enemy in self.enemies:
                 if enemy.alive:
-                    bullet = enemy.update_ai(self.player, list(self.obstacles))
+                    bullet = enemy.update_ai(
+                        self.player, 
+                        list(self.obstacles),
+                        1.0,  # delta_time
+                        self.grid_width,
+                        self.grid_height,
+                        self.tile_size
+                    )
                     if bullet:
                         self.bullets.append(bullet)
         
@@ -247,7 +261,8 @@ class HunterAssassinEnv(arcade.Window):
         
         # Enemy information
         enemy_list = list(self.enemies)
-        for i in range(config.NUM_ENEMIES):
+        num_enemies = getattr(config, 'NUM_GUARDS', getattr(config, 'NUM_ENEMIES', len(enemy_list)))
+        for i in range(num_enemies):
             if i < len(enemy_list):
                 enemy = enemy_list[i]
                 if self.player:
@@ -285,6 +300,51 @@ class HunterAssassinEnv(arcade.Window):
                                   enemy.center_x, enemy.center_y)
                 min_dist = min(min_dist, dist)
         return min_dist
+    
+    def _generate_json_map(self):
+        """Generate map from JSON file."""
+        from map_loader import load_map
+        
+        map_data = load_map(config.JSON_MAP_PATH)
+        
+        # Update grid dimensions from map
+        self.grid_width = map_data.size[0]
+        self.grid_height = map_data.size[1]
+        self.tile_size = config.TILE_SIZE
+        
+        # Create walls from tilemap
+        for y in range(len(map_data.tiles)):
+            for x in range(len(map_data.tiles[y])):
+                if map_data.is_wall(x, y):
+                    world_x, world_y = map_data.tile_to_world(x, y, config.TILE_SIZE)
+                    obstacle = Obstacle(
+                        world_x, world_y,
+                        config.TILE_SIZE, config.TILE_SIZE,
+                        config.WALL_COLOR
+                    )
+                    self.obstacles.append(obstacle)
+        
+        # Create player at spawn
+        player_tile_x, player_tile_y = map_data.player_start
+        player_x, player_y = map_data.tile_to_world(player_tile_x, player_tile_y, config.TILE_SIZE)
+        self.player = Player(player_x, player_y)
+        
+        # Create guards from map data
+        for guard_data in map_data.guards:
+            guard_tile_x, guard_tile_y = guard_data.pos
+            guard_x, guard_y = map_data.tile_to_world(guard_tile_x, guard_tile_y, config.TILE_SIZE)
+            
+            # Convert patrol points to world coordinates
+            patrol_world = []
+            for patrol_tile in guard_data.patrol:
+                px, py = map_data.tile_to_world(patrol_tile[0], patrol_tile[1], config.TILE_SIZE)
+                patrol_world.append((px, py))
+            
+            enemy = Enemy(guard_x, guard_y, patrol_world)
+            self.enemies.append(enemy)
+        
+        # Store map data for objectives, hide spots, etc.
+        self.map_data = map_data
     
     def _generate_apartment_layout(self):
         """Generate the fixed apartment layout with player and enemies."""
@@ -387,7 +447,7 @@ class HunterAssassinEnv(arcade.Window):
         self.clear()
         
         # Draw floor background
-        if config.USE_APARTMENT_LAYOUT:
+        if config.USE_JSON_MAP or (hasattr(config, 'USE_APARTMENT_LAYOUT') and config.USE_APARTMENT_LAYOUT):
             # Draw floor with subtle grid pattern
             arcade.draw_lrbt_rectangle_filled(
                 0, config.SCREEN_WIDTH,
@@ -396,7 +456,7 @@ class HunterAssassinEnv(arcade.Window):
             )
             
             # Draw subtle grid lines for floor texture
-            grid_size = 80
+            grid_size = config.TILE_SIZE if hasattr(config, 'TILE_SIZE') else 80
             grid_color = tuple(min(255, c + 5) for c in config.FLOOR_COLOR)
             
             # Vertical lines
@@ -474,6 +534,38 @@ class HunterAssassinEnv(arcade.Window):
         # Draw player
         if self.player:
             self.player.draw_colored()
+            
+            # Draw pathfinding waypoints and path
+            if self.player.path_waypoints:
+                # Draw path as connected lines
+                prev_x, prev_y = self.player.center_x, self.player.center_y
+                for i, (waypoint_x, waypoint_y) in enumerate(self.player.path_waypoints):
+                    # Draw line from previous point to this waypoint
+                    arcade.draw_line(prev_x, prev_y, waypoint_x, waypoint_y,
+                                   (0, 255, 255, 150), 2)
+                    
+                    # Draw waypoint marker (small circles)
+                    if i == self.player.current_waypoint_idx:
+                        # Current target waypoint (filled, brighter)
+                        arcade.draw_circle_filled(waypoint_x, waypoint_y, 5, (0, 255, 255))
+                    else:
+                        # Future waypoints (outline)
+                        arcade.draw_circle_outline(waypoint_x, waypoint_y, 4, (0, 200, 200), 2)
+                    
+                    prev_x, prev_y = waypoint_x, waypoint_y
+                
+                # Draw X marker at final destination
+                if self.player.target_position:
+                    target_x, target_y = self.player.target_position
+                    size = 10
+                    arcade.draw_line(target_x - size, target_y - size, 
+                                   target_x + size, target_y + size,
+                                   (0, 255, 255), 2)
+                    arcade.draw_line(target_x - size, target_y + size,
+                                   target_x + size, target_y - size,
+                                   (0, 255, 255), 2)
+                    # Draw circle around destination
+                    arcade.draw_circle_outline(target_x, target_y, 15, (0, 255, 255), 2)
         
         # Draw UI
         self._draw_ui()
@@ -535,8 +627,9 @@ class HunterAssassinEnv(arcade.Window):
         
         # Enemies alive
         enemies_alive = sum(1 for e in self.enemies if e.alive)
+        total_enemies = len(self.enemies)
         arcade.draw_text(
-            f"Enemies: {enemies_alive}/{config.NUM_ENEMIES}",
+            f"Guards: {enemies_alive}/{total_enemies}",
             10, config.SCREEN_HEIGHT - 55,
             arcade.color.WHITE, 16, font_name="Arial"
         )
@@ -564,9 +657,9 @@ class HunterAssassinEnv(arcade.Window):
         
         # Controls hint
         arcade.draw_text(
-            "WASD/Arrows: Move | Space: Toggle Rays | V: Vision | R: Reset",
+            "LEFT CLICK: Move | WASD/Arrows: Move | Space: Rays | V: Vision | R: Reset",
             10, 10,
-            arcade.color.WHITE, 12, font_name="Arial"
+            arcade.color.WHITE, 11, font_name="Arial"
         )
     
     def on_update(self, delta_time: float):
@@ -574,7 +667,12 @@ class HunterAssassinEnv(arcade.Window):
         if not self.player or not self.player.alive:
             return
         
-        # Get action from keyboard
+        # Update point-and-click movement first
+        if self.player.target_position:
+            self.player.update_movement(list(self.obstacles), 
+                                       config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
+        
+        # Get action from keyboard (overrides click movement)
         dx, dy = 0, 0
         if self.key_state[arcade.key.W] or self.key_state[arcade.key.UP]:
             dy = 1
@@ -617,10 +715,23 @@ class HunterAssassinEnv(arcade.Window):
         if key in self.key_state:
             self.key_state[key] = False
     
+    def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
+        """Handle mouse clicks for point-and-click movement with pathfinding."""
+        if button == arcade.MOUSE_BUTTON_LEFT and self.player and self.player.alive:
+            # Set target position for player with pathfinding
+            self.player.set_target(
+                x, y,
+                list(self.obstacles),
+                self.grid_width,
+                self.grid_height,
+                self.tile_size
+            )
+    
     def get_observation_space_size(self) -> int:
         """Get size of observation vector."""
         # Rays + player info + enemy info
-        return config.NUM_RAYS + 3 + (config.NUM_ENEMIES * 5)
+        num_enemies = getattr(config, 'NUM_GUARDS', getattr(config, 'NUM_ENEMIES', len(self.enemies) if hasattr(self, 'enemies') else 5))
+        return config.NUM_RAYS + 3 + (num_enemies * 5)
     
     def get_action_space_size(self) -> int:
         """Get number of discrete actions."""
