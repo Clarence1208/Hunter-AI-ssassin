@@ -9,6 +9,7 @@ import config
 from utils import (has_line_of_sight, get_distance, get_angle_to_point, 
                    is_point_in_cone, check_collision_circles, cast_ray)
 from pathfinding import find_path
+from player_animation import AnimatedPlayerSprite
 
 
 class Obstacle(arcade.SpriteSolidColor):
@@ -151,6 +152,18 @@ class Player(arcade.SpriteSolidColor):
         self.alive = True
         self.kills = 0
         
+        # Animated sprite for visual representation
+        self.animated_sprite = AnimatedPlayerSprite(x, y)
+        
+        # Attack state
+        self.is_attacking = False
+        self.attack_target = None
+        self.damage_dealt = False  # Track if damage was dealt in current attack
+        
+        # Movement tracking for animation
+        self.last_move_dx = 0
+        self.last_move_dy = 0
+        
         # Point-and-click movement with pathfinding
         self.target_position = None  # Final destination (x, y) or None
         self.path_waypoints = []  # List of waypoints to follow
@@ -200,13 +213,17 @@ class Player(arcade.SpriteSolidColor):
         Follows waypoints from A* pathfinding algorithm.
         Called each frame to move player along calculated path.
         """
-        if not self.alive or not self.path_waypoints:
+        if not self.alive or not self.path_waypoints or self.is_attacking:
+            # Update animation even if not moving
+            if not self.is_attacking:
+                self.animated_sprite.update_animation(0, 0)
             return
         
         # Get current waypoint
         if self.current_waypoint_idx >= len(self.path_waypoints):
             # Reached end of path
             self.clear_target()
+            self.animated_sprite.update_animation(0, 0)
             return
         
         waypoint_x, waypoint_y = self.path_waypoints[self.current_waypoint_idx]
@@ -220,6 +237,7 @@ class Player(arcade.SpriteSolidColor):
             if self.current_waypoint_idx >= len(self.path_waypoints):
                 # Reached final destination
                 self.clear_target()
+                self.animated_sprite.update_animation(0, 0)
                 return
             waypoint_x, waypoint_y = self.path_waypoints[self.current_waypoint_idx]
             distance = get_distance(self.center_x, self.center_y, waypoint_x, waypoint_y)
@@ -230,9 +248,13 @@ class Player(arcade.SpriteSolidColor):
         
         # Normalize and scale by speed
         magnitude = math.sqrt(dx * dx + dy * dy)
+        norm_dx = 0
+        norm_dy = 0
         if magnitude > 0:
-            dx = (dx / magnitude) * self.speed
-            dy = (dy / magnitude) * self.speed
+            norm_dx = dx / magnitude
+            norm_dy = dy / magnitude
+            dx = norm_dx * self.speed
+            dy = norm_dy * self.speed
         
         # Calculate new position
         new_x = self.center_x + dx
@@ -257,10 +279,16 @@ class Player(arcade.SpriteSolidColor):
             # Move to new position
             self.center_x = new_x
             self.center_y = new_y
+            # Update animated sprite
+            self.animated_sprite.center_x = new_x
+            self.animated_sprite.center_y = new_y
+            # Update animation with normalized direction
+            self.animated_sprite.update_animation(norm_dx, norm_dy)
         else:
             # Path is blocked, try to recalculate
             # For now, just clear target (player can click again)
             self.clear_target()
+            self.animated_sprite.update_animation(0, 0)
     
     def move(self, dx: float, dy: float, obstacles: List[Obstacle], 
              screen_width: float, screen_height: float) -> bool:
@@ -275,12 +303,16 @@ class Player(arcade.SpriteSolidColor):
         Returns:
             True if movement was successful
         """
-        if not self.alive:
+        if not self.alive or self.is_attacking:
             return False
         
         # Arrow key movement cancels point-and-click target
         if dx != 0 or dy != 0:
             self.target_position = None
+        
+        # Track movement for animation
+        self.last_move_dx = dx
+        self.last_move_dy = dy
         
         # Calculate new position
         new_x = self.center_x + dx * self.speed
@@ -305,18 +337,69 @@ class Player(arcade.SpriteSolidColor):
         if not collision:
             self.center_x = new_x
             self.center_y = new_y
+            # Update animated sprite position
+            self.animated_sprite.center_x = new_x
+            self.animated_sprite.center_y = new_y
+            # Update animation with movement direction
+            self.animated_sprite.update_animation(dx, dy)
             return True
+        else:
+            # Still update animation even if blocked
+            self.animated_sprite.update_animation(0, 0)
         
         return False
     
     def can_attack(self, enemy: 'Enemy') -> bool:
         """Check if player is close enough to attack enemy."""
-        if not self.alive or not enemy.alive:
+        if not self.alive or not enemy.alive or self.is_attacking:
             return False
         distance = get_distance(self.center_x, self.center_y, 
                                enemy.center_x, enemy.center_y)
         attack_range = getattr(config, 'PLAYER_MELEE_RANGE', getattr(config, 'PLAYER_ATTACK_RANGE', 30))
         return distance < attack_range
+    
+    def start_attack(self, enemy: 'Enemy'):
+        """
+        Start an attack animation against an enemy.
+        
+        Args:
+            enemy: The enemy being attacked
+        """
+        if not self.alive or not enemy.alive or self.is_attacking:
+            return
+        
+        self.is_attacking = True
+        self.attack_target = enemy
+        self.damage_dealt = False
+        
+        # Start the attack animation on the sprite
+        self.animated_sprite.start_attack_animation(enemy)
+    
+    def update_attack(self) -> bool:
+        """
+        Update attack state. Called each frame.
+        
+        Returns:
+            True if damage should be dealt this frame, False otherwise
+        """
+        if not self.is_attacking:
+            return False
+        
+        # Update the attack animation frames
+        self.animated_sprite.update_animation(0, 0)
+        
+        # Check if we should deal damage
+        if not self.damage_dealt and self.animated_sprite.should_deal_damage():
+            self.damage_dealt = True
+            return True
+        
+        # Check if attack animation is complete
+        if not self.animated_sprite.is_attacking():
+            self.is_attacking = False
+            self.attack_target = None
+            self.damage_dealt = False
+        
+        return False
     
     def die(self):
         """Kill the player."""
@@ -324,13 +407,37 @@ class Player(arcade.SpriteSolidColor):
         self.color = (100, 100, 100)  # Gray when dead
     
     def draw_colored(self):
-        """Draw the player as a colored circle."""
-        color = self.color if self.alive else (100, 100, 100)
-        arcade.draw_circle_filled(
-            self.center_x, self.center_y,
-            self.radius,
-            color
-        )
+        """Draw the player using animated sprite."""
+        if self.alive:
+            # Draw the animated sprite using arcade's texture drawing
+            if self.animated_sprite.texture:
+                # Use the sprite's width and height properties (which include scale)
+                width = self.animated_sprite.width
+                height = self.animated_sprite.height
+                half_width = width / 2
+                half_height = height / 2
+                
+                # Create a Rect for the sprite position
+                rect = arcade.LRBT(
+                    left=self.animated_sprite.center_x - half_width,
+                    right=self.animated_sprite.center_x + half_width,
+                    bottom=self.animated_sprite.center_y - half_height,
+                    top=self.animated_sprite.center_y + half_height
+                )
+                
+                # Draw the texture
+                arcade.draw_texture_rect(
+                    texture=self.animated_sprite.texture,
+                    rect=rect,
+                    angle=self.animated_sprite.angle
+                )
+        else:
+            # Draw gray circle when dead
+            arcade.draw_circle_filled(
+                self.center_x, self.center_y,
+                self.radius,
+                (100, 100, 100)
+            )
 
 
 class Enemy(arcade.SpriteSolidColor):

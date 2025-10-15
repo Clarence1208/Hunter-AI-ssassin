@@ -185,14 +185,24 @@ class HunterAssassinEnv(arcade.Window):
                     bullet.active = False
                     break
         
-        # Check player attacks
+        # Update player attack animation
         if self.player and self.player.alive:
-            for enemy in self.enemies:
-                if enemy.alive and self.player.can_attack(enemy):
-                    enemy.die()
+            # Update ongoing attack
+            if self.player.update_attack():
+                # Deal damage at the right moment in animation
+                if self.player.attack_target and self.player.attack_target.alive:
+                    self.player.attack_target.die()
                     self.player.kills += 1
                     reward += config.PLAYER_KILL_REWARD
                     info["kill"] = True
+            
+            # Check if player can start a new attack
+            if not self.player.is_attacking:
+                for enemy in self.enemies:
+                    if enemy.alive and self.player.can_attack(enemy):
+                        # Start attack animation instead of instant kill
+                        self.player.start_attack(enemy)
+                        break  # Only attack one enemy at a time
         
         # Distance-based reward (encourage getting closer to enemies)
         if self.player and self.player.alive:
@@ -668,9 +678,26 @@ class HunterAssassinEnv(arcade.Window):
             return
         
         # Update point-and-click movement first
-        if self.player.target_position:
+        if self.player.target_position and not self.player.is_attacking:
             self.player.update_movement(list(self.obstacles), 
                                        config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
+        
+        # Update idle animation if not moving and not attacking
+        if not self.player.target_position and not self.player.is_attacking:
+            # Check if any keys are pressed
+            dx, dy = 0, 0
+            if self.key_state[arcade.key.W] or self.key_state[arcade.key.UP]:
+                dy = 1
+            if self.key_state[arcade.key.S] or self.key_state[arcade.key.DOWN]:
+                dy = -1
+            if self.key_state[arcade.key.A] or self.key_state[arcade.key.LEFT]:
+                dx = -1
+            if self.key_state[arcade.key.D] or self.key_state[arcade.key.RIGHT]:
+                dx = 1
+            
+            if dx == 0 and dy == 0:
+                # No movement, update idle animation
+                self.player.animated_sprite.update_animation(0, 0)
         
         # Get action from keyboard (overrides click movement)
         dx, dy = 0, 0
