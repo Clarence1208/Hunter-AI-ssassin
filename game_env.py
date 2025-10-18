@@ -82,6 +82,50 @@ class HunterAssassinEnv(arcade.Window):
         self.show_vision_rays = True
         self.show_enemy_vision = True
         
+        # UI Text objects (for performance)
+        self.text_start = arcade.Text(
+            "MOVE TO START",
+            config.SCREEN_WIDTH / 2, config.SCREEN_HEIGHT / 2 + 50,
+            arcade.color.YELLOW, 36, font_name="Arial",
+            anchor_x="center", anchor_y="center", bold=True
+        )
+        self.text_start_hint = arcade.Text(
+            "(Press WASD or Arrow Keys)",
+            config.SCREEN_WIDTH / 2, config.SCREEN_HEIGHT / 2 + 10,
+            arcade.color.WHITE, 18, font_name="Arial",
+            anchor_x="center", anchor_y="center"
+        )
+        self.text_kills = arcade.Text(
+            f"Kills: 0",
+            10, config.SCREEN_HEIGHT - 30,
+            arcade.color.WHITE, 16, font_name="Arial"
+        )
+        self.text_guards = arcade.Text(
+            f"Guards: 0/0",
+            10, config.SCREEN_HEIGHT - 55,
+            arcade.color.WHITE, 16, font_name="Arial"
+        )
+        self.text_step = arcade.Text(
+            f"Step: 0/{config.MAX_STEPS_PER_EPISODE}",
+            10, config.SCREEN_HEIGHT - 80,
+            arcade.color.WHITE, 16, font_name="Arial"
+        )
+        self.text_reward = arcade.Text(
+            f"Reward: 0.0",
+            10, config.SCREEN_HEIGHT - 105,
+            arcade.color.WHITE, 16, font_name="Arial"
+        )
+        self.text_bullets = arcade.Text(
+            f"Bullets: 0",
+            10, config.SCREEN_HEIGHT - 130,
+            arcade.color.YELLOW, 12, font_name="Arial"
+        )
+        self.text_controls = arcade.Text(
+            "LEFT CLICK: Move | WASD/Arrows: Move | Space: Rays | V: Vision | R: Reset",
+            10, 10,
+            arcade.color.WHITE, 11, font_name="Arial"
+        )
+        
         # Initialize game
         self.reset()
     
@@ -615,62 +659,33 @@ class HunterAssassinEnv(arcade.Window):
         # Game start indicator
         if not self.game_started:
             # Draw prominent "READY" message
-            arcade.draw_text(
-                "MOVE TO START",
-                config.SCREEN_WIDTH / 2, config.SCREEN_HEIGHT / 2 + 50,
-                arcade.color.YELLOW, 36, font_name="Arial",
-                anchor_x="center", anchor_y="center", bold=True
-            )
-            arcade.draw_text(
-                "(Press WASD or Arrow Keys)",
-                config.SCREEN_WIDTH / 2, config.SCREEN_HEIGHT / 2 + 10,
-                arcade.color.WHITE, 18, font_name="Arial",
-                anchor_x="center", anchor_y="center"
-            )
+            self.text_start.draw()
+            self.text_start_hint.draw()
         
         # Score
-        arcade.draw_text(
-            f"Kills: {self.player.kills if self.player else 0}",
-            10, config.SCREEN_HEIGHT - 30,
-            arcade.color.WHITE, 16, font_name="Arial"
-        )
+        self.text_kills.text = f"Kills: {self.player.kills if self.player else 0}"
+        self.text_kills.draw()
         
         # Enemies alive
         enemies_alive = sum(1 for e in self.enemies if e.alive)
         total_enemies = len(self.enemies)
-        arcade.draw_text(
-            f"Guards: {enemies_alive}/{total_enemies}",
-            10, config.SCREEN_HEIGHT - 55,
-            arcade.color.WHITE, 16, font_name="Arial"
-        )
+        self.text_guards.text = f"Guards: {enemies_alive}/{total_enemies}"
+        self.text_guards.draw()
         
         # Episode step
-        arcade.draw_text(
-            f"Step: {self.episode_step}/{config.MAX_STEPS_PER_EPISODE}",
-            10, config.SCREEN_HEIGHT - 80,
-            arcade.color.WHITE, 16, font_name="Arial"
-        )
+        self.text_step.text = f"Step: {self.episode_step}/{config.MAX_STEPS_PER_EPISODE}"
+        self.text_step.draw()
         
         # Total reward
-        arcade.draw_text(
-            f"Reward: {self.total_reward:.1f}",
-            10, config.SCREEN_HEIGHT - 105,
-            arcade.color.WHITE, 16, font_name="Arial"
-        )
+        self.text_reward.text = f"Reward: {self.total_reward:.1f}"
+        self.text_reward.draw()
         
         # Bullets count (for debugging)
-        arcade.draw_text(
-            f"Bullets: {len(self.bullets)}",
-            10, config.SCREEN_HEIGHT - 130,
-            arcade.color.YELLOW, 12, font_name="Arial"
-        )
+        self.text_bullets.text = f"Bullets: {len(self.bullets)}"
+        self.text_bullets.draw()
         
         # Controls hint
-        arcade.draw_text(
-            "LEFT CLICK: Move | WASD/Arrows: Move | Space: Rays | V: Vision | R: Reset",
-            10, 10,
-            arcade.color.WHITE, 11, font_name="Arial"
-        )
+        self.text_controls.draw()
     
     def on_update(self, delta_time: float):
         """Update game state (for manual play mode)."""
