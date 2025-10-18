@@ -277,6 +277,15 @@ Built with:
 - NumPy - Numerical computing
 - Inspired by the mobile game "Hunter Assassin"
 
----
 
-**Ready for RL training!** Start by running the test mode to verify everything works, then integrate with your preferred RL framework.
+### TO DO : 
+- Remove le ray autour du joueur
+- Améliorer le comportement des ennemis (chemin aléatoire ++)
+- Fix ray des ennemis (comme pour le joueur)
+- Modifier la map 
+- Fix le path du joueur quand on repasse en manuel
+- Trouver des beaux sprites ennemis
+- Voir pourquoi ça prend autant de cpu (wtf) - optimisation
+- Vitesse du jeu
+- Prototype d'IA
+- Tej les fichiers d'IA qui servent à rien
