@@ -4,8 +4,8 @@ Game configuration settings for Hunter Assassin
 
 # Window settings
 TILE_SIZE = 56  # Pixels per tile
-MAP_TILES_WIDTH = 16
-MAP_TILES_HEIGHT = 16
+MAP_TILES_WIDTH = 8
+MAP_TILES_HEIGHT = 8
 SCREEN_WIDTH = TILE_SIZE * MAP_TILES_WIDTH  # 1024
 SCREEN_HEIGHT = TILE_SIZE * MAP_TILES_HEIGHT  # 1024
 SCREEN_TITLE = "Hunter Assassin - Stealth Edition"
@@ -57,7 +57,7 @@ OBSTACLE_MAX_SIZE = 120
 
 # Map layout settings
 USE_JSON_MAP = True  # Use JSON map loader
-JSON_MAP_PATH = "data/level1.json"
+JSON_MAP_PATH = "data/level_easy.json"
 WALL_COLOR = (60, 60, 70)  # Dark blue-gray for walls
 FLOOR_COLOR = (40, 40, 45)  # Very dark gray for floor
 OBJECTIVE_COLOR = (255, 215, 0)  # Gold for objectives
@@ -79,15 +79,10 @@ DISTANCE_REWARD_SCALE = 0.5  # Reward for getting closer to enemies
 
 # Action space (discrete)
 ACTIONS = {
-    0: (0, 0),      # Stay still
     1: (0, 1),      # Up
     2: (0, -1),     # Down
     3: (-1, 0),     # Left
     4: (1, 0),      # Right
-    5: (-1, 1),     # Up-Left
-    6: (1, 1),      # Up-Right
-    7: (-1, -1),    # Down-Left
-    8: (1, -1),     # Down-Right
 }
 NUM_ACTIONS = len(ACTIONS)
 

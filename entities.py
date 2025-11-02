@@ -289,66 +289,39 @@ class Player(arcade.SpriteSolidColor):
             # For now, just clear target (player can click again)
             self.clear_target()
             self.animated_sprite.update_animation(0, 0)
-    
-    def move(self, dx: float, dy: float, obstacles: List[Obstacle], 
+
+    def move(self, dx: float, dy: float, obstacles: List[Obstacle],
              screen_width: float, screen_height: float) -> bool:
-        """
-        Move player with arrow keys (overrides point-and-click).
-        
-        Args:
-            dx, dy: Movement direction (-1, 0, 1)
-            obstacles: List of obstacles to check collision
-            screen_width, screen_height: Screen boundaries
-        
-        Returns:
-            True if movement was successful
-        """
+        """Déplacement discret, case par case."""
         if not self.alive or self.is_attacking:
             return False
-        
-        # Arrow key movement cancels point-and-click target
-        if dx != 0 or dy != 0:
-            self.target_position = None
-        
-        # Track movement for animation
-        self.last_move_dx = dx
-        self.last_move_dy = dy
-        
-        # Calculate new position
-        new_x = self.center_x + dx * self.speed
-        new_y = self.center_y + dy * self.speed
-        
-        # Check screen boundaries
-        new_x = max(self.radius, min(screen_width - self.radius, new_x))
-        new_y = max(self.radius, min(screen_height - self.radius, new_y))
-        
-        # Check obstacle collisions
-        collision = False
+
+        if dx == 0 and dy == 0:
+            return False
+
+        step = config.TILE_SIZE  # Taille d'une case
+        new_x = self.center_x + dx * step
+        new_y = self.center_y + dy * step
+
+        # Vérifie collisions
         for obstacle in obstacles:
-            # Simple AABB collision check with circle
             closest_x = max(obstacle.left, min(new_x, obstacle.right))
             closest_y = max(obstacle.bottom, min(new_y, obstacle.top))
-            
-            dist = get_distance(new_x, new_y, closest_x, closest_y)
-            if dist < self.radius:
-                collision = True
-                break
-        
-        if not collision:
-            self.center_x = new_x
-            self.center_y = new_y
-            # Update animated sprite position
-            self.animated_sprite.center_x = new_x
-            self.animated_sprite.center_y = new_y
-            # Update animation with movement direction
-            self.animated_sprite.update_animation(dx, dy)
-            return True
-        else:
-            # Still update animation even if blocked
-            self.animated_sprite.update_animation(0, 0)
-        
-        return False
-    
+            if get_distance(new_x, new_y, closest_x, closest_y) < self.radius:
+                return False  # collision
+
+        # Vérifie bords écran
+        new_x = max(self.radius, min(screen_width - self.radius, new_x))
+        new_y = max(self.radius, min(screen_height - self.radius, new_y))
+
+        # Applique mouvement
+        self.center_x = new_x
+        self.center_y = new_y
+        self.animated_sprite.center_x = new_x
+        self.animated_sprite.center_y = new_y
+        self.animated_sprite.update_animation(dx, dy)
+        return True
+
     def can_attack(self, enemy: 'Enemy') -> bool:
         """Check if player is close enough to attack enemy."""
         if not self.alive or not enemy.alive or self.is_attacking:

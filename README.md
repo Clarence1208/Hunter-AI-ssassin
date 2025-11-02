@@ -77,18 +77,6 @@ python main.py --mode play
 - `R` - Reset game
 - `ESC` - Quit
 
-### Demo Mode
-Watch random actions being executed:
-```bash
-python main.py --mode demo --episodes 5
-```
-
-### Test RL Interface
-Test the environment's RL interface:
-```bash
-python main.py --mode test
-```
-
 ### Headless Mode
 Run without rendering (useful for training):
 ```bash
@@ -279,7 +267,6 @@ Built with:
 
 
 ### TO DO : -
-- Fix ray des ennemis (comme pour le joueur)
 - Fix le path du joueur quand on repasse en manuel
 - Trouver des beaux sprites ennemis
 - Voir pourquoi ça prend autant de cpu (wtf) - optimisation
