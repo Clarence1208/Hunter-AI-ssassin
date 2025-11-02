@@ -3,7 +3,7 @@ Game configuration settings for Hunter Assassin
 """
 
 # Window settings
-TILE_SIZE = 64  # Pixels per tile
+TILE_SIZE = 56  # Pixels per tile
 MAP_TILES_WIDTH = 16
 MAP_TILES_HEIGHT = 16
 SCREEN_WIDTH = TILE_SIZE * MAP_TILES_WIDTH  # 1024
@@ -32,13 +32,13 @@ PLAYER_KILL_REWARD = 100.0
 GUARD_MOVEMENT_SPEED = 1.0
 GUARD_SIZE = 20
 GUARD_COLOR = (255, 50, 50)  # Red
-GUARD_VISION_RANGE = TILE_SIZE * 8  # 8 tiles = 512 pixels
-GUARD_VISION_ANGLE = 60  # Degrees (cone of vision)
+GUARD_VISION_RANGE = TILE_SIZE * 5
+GUARD_VISION_ANGLE = 45  # Degrees (cone of vision)
 GUARD_CHASE_SPEED = 1.5
-GUARD_PATROL_PAUSE_TIME = 60  # Frames
+GUARD_PATROL_PAUSE_TIME = 90  # Frames
 GUARD_ALERT_COLOR = (255, 150, 0)  # Orange when alerted
 GUARD_DETECTION_TIME = 0.3  # Seconds to full detection
-GUARD_SHOOT_RANGE = TILE_SIZE * 6  # Can shoot within 6 tiles
+GUARD_SHOOT_RANGE = TILE_SIZE * 5  # Can shoot within 5 tiles
 NUM_GUARDS = 4  # Will be overridden by JSON map
 
 # Enemy shooting settings

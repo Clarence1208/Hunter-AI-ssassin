@@ -278,9 +278,7 @@ Built with:
 - Inspired by the mobile game "Hunter Assassin"
 
 
-### TO DO : 
-- Remove le ray autour du joueur
-- Améliorer le comportement des ennemis (chemin aléatoire ++)
+### TO DO : -
 - Fix ray des ennemis (comme pour le joueur)
 - Fix le path du joueur quand on repasse en manuel
 - Trouver des beaux sprites ennemis
