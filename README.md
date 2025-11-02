@@ -71,7 +71,7 @@ python main.py --mode play
 ```
 
 **Controls:**
-- `WASD` or `Arrow Keys` - Move player
+- `WASD` or `Arrow Keys` or Click - Move player
 - `SPACE` - Toggle vision rays display
 - `V` - Toggle enemy vision cones
 - `R` - Reset game
@@ -282,7 +282,6 @@ Built with:
 - Remove le ray autour du joueur
 - Améliorer le comportement des ennemis (chemin aléatoire ++)
 - Fix ray des ennemis (comme pour le joueur)
-- Modifier la map 
 - Fix le path du joueur quand on repasse en manuel
 - Trouver des beaux sprites ennemis
 - Voir pourquoi ça prend autant de cpu (wtf) - optimisation

@@ -6,18 +6,7 @@ from typing import List, Tuple, Dict
 
 
 class ApartmentLayout:
-    """
-    Fixed apartment-style map layout with rooms, corridors, and strategic cover.
-    
-    Layout structure:
-    - Living room (large open area)
-    - Bedroom (smaller rooms)
-    - Kitchen area
-    - Bathroom
-    - Corridors connecting rooms
-    - Strategic cover points
-    """
-    
+
     def __init__(self):
         self.width = config.SCREEN_WIDTH
         self.height = config.SCREEN_HEIGHT

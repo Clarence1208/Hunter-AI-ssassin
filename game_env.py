@@ -79,7 +79,6 @@ class HunterAssassinEnv(arcade.Window):
         }
         
         # Visual settings
-        self.show_vision_rays = True
         self.show_enemy_vision = True
         
         # UI Text objects (for performance)
@@ -121,7 +120,7 @@ class HunterAssassinEnv(arcade.Window):
             arcade.color.YELLOW, 12, font_name="Arial"
         )
         self.text_controls = arcade.Text(
-            "LEFT CLICK: Move | WASD/Arrows: Move | Space: Rays | V: Vision | R: Reset",
+            "LEFT CLICK: Move | WASD/Arrows: Move | V: Vision | R: Reset",
             10, 10,
             arcade.color.WHITE, 11, font_name="Arial"
         )
@@ -524,25 +523,7 @@ class HunterAssassinEnv(arcade.Window):
         # Draw obstacles
         for obstacle in self.obstacles:
             obstacle.draw_colored()
-        
-        # Draw vision rays for player (for debugging/visualization)
-        if self.show_vision_rays and self.player and self.player.alive:
-            for i in range(config.NUM_RAYS):
-                angle = (360 / config.NUM_RAYS) * i
-                distance, _ = cast_ray(
-                    self.player.center_x, self.player.center_y,
-                    angle, config.RAY_MAX_DISTANCE,
-                    list(self.obstacles)
-                )
-                angle_rad = math.radians(angle)
-                end_x = self.player.center_x + math.cos(angle_rad) * distance
-                end_y = self.player.center_y + math.sin(angle_rad) * distance
-                
-                arcade.draw_line(
-                    self.player.center_x, self.player.center_y,
-                    end_x, end_y,
-                    config.RAY_COLOR, config.RAY_THICKNESS
-                )
+
         
         # Draw enemy vision cones with gradient effect
         if self.show_enemy_vision:
@@ -742,9 +723,6 @@ class HunterAssassinEnv(arcade.Window):
         """Handle key press events."""
         if key in self.key_state:
             self.key_state[key] = True
-        
-        if key == arcade.key.SPACE:
-            self.show_vision_rays = not self.show_vision_rays
         
         if key == arcade.key.R:
             self.reset()
