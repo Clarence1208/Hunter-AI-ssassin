@@ -2,26 +2,14 @@
 Simple Q-Learning Agent for Hunter Assassin Game
 Q-table gardée uniquement en mémoire (dans le code)
 """
+
+
 import numpy as np
 from typing import Tuple
 import random
-
-
-"""
-Simple Q-Learning Agent for Hunter Assassin Game
-Version adaptée au déplacement grille 16×16, 4 actions (haut, bas, gauche, droite)
-"""
-import numpy as np
-from typing import Tuple
-import random
-
+import arcade
 
 class SimpleAgent:
-    """
-    Agent Q-Learning discret pour environnement grille 16x16.
-    Chaque état = position (x, y) du joueur dans la grille.
-    """
-
     def __init__(self):
         """Initialiser l'agent simple."""
         # Q-table en mémoire: dictionnaire {état: [Q-values pour chaque action]}
@@ -153,13 +141,13 @@ class SimpleAgent:
 
         print("=" * 60 + "\n")
 
-def train_simple(num_episodes: int = 100, render: bool = False):
+def train_simple(num_episodes: int = 100, render: bool = True):
     """
     Entraîner l'agent simple.
 
     Args:
         num_episodes: nombre d'épisodes d'entraînement
-        render: afficher le jeu?
+        render: afficher le jeu tout le temps OUI pour le moment
     """
     from game_env import HunterAssassinEnv
 
@@ -173,6 +161,17 @@ def train_simple(num_episodes: int = 100, render: bool = False):
     # Créer environnement et agent
     env = HunterAssassinEnv(render_mode=render)
     agent = SimpleAgent()
+
+    test_window = TestWindow(agent)
+
+    # Fonction de mise à jour appelée par arcade
+    def on_update(delta_time):
+        test_window.update()
+        test_window.env.on_draw()
+
+    # Lancer la boucle arcade
+    arcade.schedule(on_update, 1 / 60)  # 60 FPS
+    arcade.run()
 
     for episode in range(num_episodes):
         # Reset
@@ -282,11 +281,10 @@ class TestWindow:
         self.frame_counter = 0
 
     def update(self):
-        """Mise à jour de chaque frame."""
         if self.done:
-            # Pause entre les épisodes
+            self.total_reward += self.episode_reward
             self.frame_counter += 1
-            if self.frame_counter > 60:  # 1 seconde de pause
+            if self.frame_counter > 5:  # quelques frames pour pause
                 self._start_episode()
             return
 
@@ -326,7 +324,7 @@ def test_simple(agent: SimpleAgent = None, num_episodes: int = 5):
         agent: agent déjà entraîné (ou None pour en créer un vide)
         num_episodes: nombre d'épisodes de test
     """
-    import arcade
+
 
     print("\n" + "=" * 60)
     print("TEST AGENT SIMPLE")
@@ -379,11 +377,11 @@ if __name__ == "__main__":
 
         else:
             print("Usage:")
-            print("  python rl_agent.py train [episodes]  # Entraîner")
-            print("  python rl_agent.py test              # Tester (vide)")
+            print("  python agent.py train [episodes]  # Entraîner")
+            print("  python agent.py test              # Tester (vide)")
     else:
         print("Agent Q-Learning Simple (Q-table en mémoire)")
         print("\nUsage:")
-        print("  python rl_agent.py train 100   # Entraîner 100 épisodes")
-        print("  python rl_agent.py train 500   # Entraîner 500 épisodes")
-        print("  python rl_agent.py test        # Tester agent vide")
+        print("  python agent.py train 100   # Entraîner 100 épisodes")
+        print("  python agent.py train 500   # Entraîner 500 épisodes")
+        print("  python agent.py test        # Tester agent vide")

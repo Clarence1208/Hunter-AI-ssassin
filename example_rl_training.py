@@ -1,13 +1,5 @@
-"""
-Example RL Training Script
-This demonstrates how to integrate the Hunter Assassin environment with an RL algorithm.
-
-This example shows a simple DQN-like structure (pseudo-code style).
-You can adapt this to use with actual frameworks like Stable-Baselines3, RLlib, or custom implementations.
-"""
 import numpy as np
 from game_env import HunterAssassinEnv
-import config
 
 
 class RandomAgent:
@@ -45,8 +37,7 @@ class SimpleQLearningAgent:
         self.learning_rate = 0.001
         self.gamma = 0.99  # Discount factor
         
-        # For real RL, you'd use a neural network here
-        # This is just a placeholder
+
         print(f"Initialized agent with obs_size={observation_size}, action_size={action_space_size}")
     
     def select_action(self, observation):
@@ -68,7 +59,7 @@ class SimpleQLearningAgent:
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
 
-def train_agent(agent, num_episodes=1000, render=False, print_every=10):
+def train_agent(agent, num_episodes=1000, render=True, print_every=10):
     """
     Train an agent in the Hunter Assassin environment.
     
@@ -165,62 +156,34 @@ def train_agent(agent, num_episodes=1000, render=False, print_every=10):
     return episode_rewards, episode_lengths, episode_kills
 
 
-def evaluate_agent(agent, num_episodes=10, render=True):
-    """
-    Evaluate a trained agent.
-    
-    Args:
-        agent: The agent to evaluate
-        num_episodes: Number of episodes to evaluate
-        render: Whether to render the game
-    """
+def evaluate_agent(agent, num_episodes=5, render=False):
     env = HunterAssassinEnv(render_mode=render)
-    
-    print("\n" + "="*60)
-    print("Evaluating Agent")
-    print("="*60 + "\n")
-    
-    episode_rewards = []
-    wins = 0
-    
+    total_rewards = []
+
     for episode in range(num_episodes):
-        obs = env.reset()
+        state, _ = env.reset()
         done = False
         episode_reward = 0
-        
+
         while not done:
-            # Agent selects action (no exploration)
-            if hasattr(agent, 'epsilon'):
-                old_epsilon = agent.epsilon
-                agent.epsilon = 0  # No exploration during evaluation
-            
-            action = agent.select_action(obs)
-            
-            if hasattr(agent, 'epsilon'):
-                agent.epsilon = old_epsilon
-            
-            obs, reward, done, info = env.step(action)
+            action = agent.choose_action(state)
+            next_state, reward, done, truncated, _ = env.step(action)
             episode_reward += reward
-            
+            state = next_state
+
             if render:
-                env.on_draw()
-                env.flip()
-        
-        episode_rewards.append(episode_reward)
-        if info.get('win', False):
-            wins += 1
-        
-        print(f"Episode {episode + 1}: Reward={episode_reward:.2f}, "
-              f"Kills={info['kills']}, Win={info.get('win', False)}")
-    
+                env.render()
+
+        total_rewards.append(episode_reward)
+        print(f"Épisode {episode+1}/{num_episodes} terminé — Score: {episode_reward:.2f}")
+
+        # ✅ Relance la partie automatiquement
+        if done:
+            state, _ = env.reset()
+
     env.close()
-    
-    print("\n" + "="*60)
-    print("Evaluation Results")
-    print("="*60)
-    print(f"Win Rate: {wins/num_episodes*100:.1f}%")
-    print(f"Average Reward: {np.mean(episode_rewards):.2f}")
-    print("="*60 + "\n")
+    avg_reward = sum(total_rewards) / len(total_rewards)
+    print(f"Récompense moyenne sur {num_episodes} épisodes : {avg_reward:.2f}")
 
 
 def main():
@@ -270,8 +233,7 @@ def main():
     if eval_choice != 'n':
         num_eval_episodes = int(input("Number of evaluation episodes [default: 5]: ").strip() or "5")
         evaluate_agent(agent, num_episodes=num_eval_episodes, render=True)
-    
-    print("\nDone! Check the code to integrate your own RL algorithm.")
+
 
 
 if __name__ == "__main__":
