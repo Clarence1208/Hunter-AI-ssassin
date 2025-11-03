@@ -79,7 +79,6 @@ class HunterAssassinEnv(arcade.Window):
         }
         
         # Visual settings
-        self.show_vision_rays = True
         self.show_enemy_vision = True
         
         # UI Text objects (for performance)
@@ -121,7 +120,7 @@ class HunterAssassinEnv(arcade.Window):
             arcade.color.YELLOW, 12, font_name="Arial"
         )
         self.text_controls = arcade.Text(
-            "LEFT CLICK: Move | WASD/Arrows: Move | Space: Rays | V: Vision | R: Reset",
+            "LEFT CLICK: Move | WASD/Arrows: Move | V: Vision | R: Reset",
             10, 10,
             arcade.color.WHITE, 11, font_name="Arial"
         )
@@ -387,14 +386,7 @@ class HunterAssassinEnv(arcade.Window):
         for guard_data in map_data.guards:
             guard_tile_x, guard_tile_y = guard_data.pos
             guard_x, guard_y = map_data.tile_to_world(guard_tile_x, guard_tile_y, config.TILE_SIZE)
-            
-            # Convert patrol points to world coordinates
-            patrol_world = []
-            for patrol_tile in guard_data.patrol:
-                px, py = map_data.tile_to_world(patrol_tile[0], patrol_tile[1], config.TILE_SIZE)
-                patrol_world.append((px, py))
-            
-            enemy = Enemy(guard_x, guard_y, patrol_world)
+            enemy = Enemy(guard_x, guard_y)
             self.enemies.append(enemy)
         
         # Store map data for objectives, hide spots, etc.
@@ -524,25 +516,7 @@ class HunterAssassinEnv(arcade.Window):
         # Draw obstacles
         for obstacle in self.obstacles:
             obstacle.draw_colored()
-        
-        # Draw vision rays for player (for debugging/visualization)
-        if self.show_vision_rays and self.player and self.player.alive:
-            for i in range(config.NUM_RAYS):
-                angle = (360 / config.NUM_RAYS) * i
-                distance, _ = cast_ray(
-                    self.player.center_x, self.player.center_y,
-                    angle, config.RAY_MAX_DISTANCE,
-                    list(self.obstacles)
-                )
-                angle_rad = math.radians(angle)
-                end_x = self.player.center_x + math.cos(angle_rad) * distance
-                end_y = self.player.center_y + math.sin(angle_rad) * distance
-                
-                arcade.draw_line(
-                    self.player.center_x, self.player.center_y,
-                    end_x, end_y,
-                    config.RAY_COLOR, config.RAY_THICKNESS
-                )
+
         
         # Draw enemy vision cones with gradient effect
         if self.show_enemy_vision:
@@ -623,13 +597,13 @@ class HunterAssassinEnv(arcade.Window):
         
         # Draw UI
         self._draw_ui()
-    
-    def _draw_vision_cone(self, center_x: float, center_y: float, 
-                          radius: float, angle_start: float, angle_end: float, 
+
+    def _draw_vision_cone(self, center_x: float, center_y: float,
+                          radius: float, angle_start: float, angle_end: float,
                           color: Tuple[int, int, int, int]):
         """
-        Draw a filled vision cone (wedge shape).
-        
+        Draw a filled vision cone that stops at walls.
+
         Args:
             center_x, center_y: Center point of the cone
             radius: Radius of the cone
@@ -639,18 +613,27 @@ class HunterAssassinEnv(arcade.Window):
         """
         # Create points for the cone/wedge
         points = [(center_x, center_y)]  # Start at center
-        
+
         # Number of segments for smooth arc
         num_segments = max(3, int(abs(angle_end - angle_start) / 5))
-        
-        # Add points along the arc
+
+        # Add points along the arc, but ray cast to find wall intersections
         for i in range(num_segments + 1):
             angle = angle_start + (angle_end - angle_start) * i / num_segments
+
+            # Cast a ray to find where it hits a wall
+            distance, hit_point = cast_ray(
+                center_x, center_y,
+                angle, radius,
+                list(self.obstacles)
+            )
+
+            # Use the hit point (which stops at walls)
             angle_rad = math.radians(angle)
-            x = center_x + math.cos(angle_rad) * radius
-            y = center_y + math.sin(angle_rad) * radius
+            x = center_x + math.cos(angle_rad) * distance
+            y = center_y + math.sin(angle_rad) * distance
             points.append((x, y))
-        
+
         # Draw filled polygon
         arcade.draw_polygon_filled(points, color)
     
@@ -742,9 +725,6 @@ class HunterAssassinEnv(arcade.Window):
         """Handle key press events."""
         if key in self.key_state:
             self.key_state[key] = True
-        
-        if key == arcade.key.SPACE:
-            self.show_vision_rays = not self.show_vision_rays
         
         if key == arcade.key.R:
             self.reset()

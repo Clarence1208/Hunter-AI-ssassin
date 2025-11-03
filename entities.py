@@ -289,66 +289,39 @@ class Player(arcade.SpriteSolidColor):
             # For now, just clear target (player can click again)
             self.clear_target()
             self.animated_sprite.update_animation(0, 0)
-    
-    def move(self, dx: float, dy: float, obstacles: List[Obstacle], 
+
+    def move(self, dx: float, dy: float, obstacles: List[Obstacle],
              screen_width: float, screen_height: float) -> bool:
-        """
-        Move player with arrow keys (overrides point-and-click).
-        
-        Args:
-            dx, dy: Movement direction (-1, 0, 1)
-            obstacles: List of obstacles to check collision
-            screen_width, screen_height: Screen boundaries
-        
-        Returns:
-            True if movement was successful
-        """
+        """Déplacement discret, case par case."""
         if not self.alive or self.is_attacking:
             return False
-        
-        # Arrow key movement cancels point-and-click target
-        if dx != 0 or dy != 0:
-            self.target_position = None
-        
-        # Track movement for animation
-        self.last_move_dx = dx
-        self.last_move_dy = dy
-        
-        # Calculate new position
-        new_x = self.center_x + dx * self.speed
-        new_y = self.center_y + dy * self.speed
-        
-        # Check screen boundaries
-        new_x = max(self.radius, min(screen_width - self.radius, new_x))
-        new_y = max(self.radius, min(screen_height - self.radius, new_y))
-        
-        # Check obstacle collisions
-        collision = False
+
+        if dx == 0 and dy == 0:
+            return False
+
+        step = config.TILE_SIZE  # Taille d'une case
+        new_x = self.center_x + dx * step
+        new_y = self.center_y + dy * step
+
+        # Vérifie collisions
         for obstacle in obstacles:
-            # Simple AABB collision check with circle
             closest_x = max(obstacle.left, min(new_x, obstacle.right))
             closest_y = max(obstacle.bottom, min(new_y, obstacle.top))
-            
-            dist = get_distance(new_x, new_y, closest_x, closest_y)
-            if dist < self.radius:
-                collision = True
-                break
-        
-        if not collision:
-            self.center_x = new_x
-            self.center_y = new_y
-            # Update animated sprite position
-            self.animated_sprite.center_x = new_x
-            self.animated_sprite.center_y = new_y
-            # Update animation with movement direction
-            self.animated_sprite.update_animation(dx, dy)
-            return True
-        else:
-            # Still update animation even if blocked
-            self.animated_sprite.update_animation(0, 0)
-        
-        return False
-    
+            if get_distance(new_x, new_y, closest_x, closest_y) < self.radius:
+                return False  # collision
+
+        # Vérifie bords écran
+        new_x = max(self.radius, min(screen_width - self.radius, new_x))
+        new_y = max(self.radius, min(screen_height - self.radius, new_y))
+
+        # Applique mouvement
+        self.center_x = new_x
+        self.center_y = new_y
+        self.animated_sprite.center_x = new_x
+        self.animated_sprite.center_y = new_y
+        self.animated_sprite.update_animation(dx, dy)
+        return True
+
     def can_attack(self, enemy: 'Enemy') -> bool:
         """Check if player is close enough to attack enemy."""
         if not self.alive or not enemy.alive or self.is_attacking:
@@ -445,7 +418,7 @@ class Enemy(arcade.SpriteSolidColor):
     Enemy AI with patrol and chase behavior, using ray casting for vision.
     """
     
-    def __init__(self, x: float, y: float, patrol_points: Optional[List[Tuple[float, float]]] = None):
+    def __init__(self, x: float, y: float):
         # Use GUARD config if available, fall back to ENEMY for compatibility
         size = getattr(config, 'GUARD_SIZE', getattr(config, 'ENEMY_SIZE', 20))
         color = getattr(config, 'GUARD_COLOR', getattr(config, 'ENEMY_COLOR', (255, 50, 50)))
@@ -466,7 +439,6 @@ class Enemy(arcade.SpriteSolidColor):
         
         # AI state
         self.state = "patrol"  # patrol, chase, alert
-        self.patrol_points = patrol_points if patrol_points else []
         self.current_patrol_index = 0
         self.patrol_pause_counter = 0
         self.last_known_player_pos = None
@@ -727,48 +699,76 @@ class Enemy(arcade.SpriteSolidColor):
         if reached:
             self.last_known_player_pos = None
             self.alert_timer = 0
-    
+
     def _patrol(self, obstacles: List[Obstacle], delta_time: float,
                 grid_width: int, grid_height: int, tile_size: int):
-        """Patrol between waypoints using pathfinding."""
-        if not self.patrol_points:
-            # Random wandering if no patrol points (keep simple direct movement)
-            if random.random() < 0.02:  # 2% chance to change direction each frame
-                self.vision_angle = random.uniform(0, 360)
-            
-            angle_rad = math.radians(self.vision_angle)
-            dx = math.cos(angle_rad) * self.speed * delta_time
-            dy = math.sin(angle_rad) * self.speed * delta_time
-            
-            self._move_with_collision(dx, dy, obstacles)
-            return
-        
-        # Patrol with waypoints
+
+        # Handle pause state
         if self.patrol_pause_counter > 0:
             self.patrol_pause_counter -= 1
-            self._clear_path()  # Clear path while paused
             return
-        
-        target = self.patrol_points[self.current_patrol_index]
-        distance = get_distance(self.center_x, self.center_y, target[0], target[1])
-        
-        if distance < 10:  # Reached waypoint
-            self.current_patrol_index = (self.current_patrol_index + 1) % len(self.patrol_points)
-            pause_time = getattr(config, 'GUARD_PATROL_PAUSE_TIME', getattr(config, 'ENEMY_PATROL_PAUSE_TIME', 60))
-            self.patrol_pause_counter = pause_time
-            self._clear_path()
+
+        # If we're currently moving to a tile, continue moving
+        if self.target_position:
+            reached = self._follow_path(self.speed * delta_time)
+            if reached:
+                # Reached the tile, pause before choosing next move
+                self.patrol_pause_counter = random.randint(5, config.GUARD_PATROL_PAUSE_TIME)  # Pause 0.33-1 second
+                self._clear_path()
             return
-        
-        # Set path to patrol target if not already set or changed
-        if not self.target_position or get_distance(target[0], target[1],
-                                                    self.target_position[0],
-                                                    self.target_position[1]) > 5:
-            self._set_pathfinding_target(target[0], target[1], obstacles,
-                                        grid_width, grid_height, tile_size)
-        
-        # Follow the path
-        self._follow_path(self.speed * delta_time)
-    
+
+        # If no target, pick a random adjacent tile to move to
+        # Get current tile position
+        current_tile_x = int(self.center_x / tile_size)
+        current_tile_y = int(self.center_y / tile_size)
+
+        # Possible moves: up, down, left, right
+        possible_moves = [
+            (0, 1),  # Up
+            (0, -1),  # Down
+            (1, 0),  # Right
+            (-1, 0),  # Left
+        ]
+
+        # Shuffle moves for randomness
+        random.shuffle(possible_moves)
+
+        # Try each direction until we find a valid tile
+        for dx, dy in possible_moves:
+            target_tile_x = current_tile_x + dx
+            target_tile_y = current_tile_y + dy
+
+            # Check bounds
+            if (target_tile_x < 0 or target_tile_x >= grid_width or
+                    target_tile_y < 0 or target_tile_y >= grid_height):
+                continue
+
+            # Convert tile to world coordinates (center of tile)
+            target_x = target_tile_x * tile_size + tile_size / 2
+            target_y = target_tile_y * tile_size + tile_size / 2
+
+            # Check if tile is blocked by obstacle
+            tile_blocked = False
+            for obstacle in obstacles:
+                if (obstacle.left <= target_x <= obstacle.right and
+                        obstacle.bottom <= target_y <= obstacle.top):
+                    tile_blocked = True
+                    break
+
+            if not tile_blocked:
+                # Valid tile found, set it as target
+                self._set_pathfinding_target(target_x, target_y, obstacles,
+                                             grid_width, grid_height, tile_size)
+
+                # Update vision angle to face the direction we're moving
+                angle = get_angle_to_point(self.center_x, self.center_y, target_x, target_y)
+                self.vision_angle = angle
+                break
+
+        # If no valid moves found (stuck), just pause
+        if not self.target_position:
+            self.patrol_pause_counter = random.randint(30, 60)
+
     def _move_with_collision(self, dx: float, dy: float, obstacles: List[Obstacle]) -> bool:
         """Move with obstacle collision detection."""
         # Add a small buffer to prevent clipping into walls

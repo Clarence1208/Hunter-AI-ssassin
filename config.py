@@ -3,9 +3,9 @@ Game configuration settings for Hunter Assassin
 """
 
 # Window settings
-TILE_SIZE = 64  # Pixels per tile
-MAP_TILES_WIDTH = 16
-MAP_TILES_HEIGHT = 16
+TILE_SIZE = 56  # Pixels per tile
+MAP_TILES_WIDTH = 8
+MAP_TILES_HEIGHT = 8
 SCREEN_WIDTH = TILE_SIZE * MAP_TILES_WIDTH  # 1024
 SCREEN_HEIGHT = TILE_SIZE * MAP_TILES_HEIGHT  # 1024
 SCREEN_TITLE = "Hunter Assassin - Stealth Edition"
@@ -32,13 +32,13 @@ PLAYER_KILL_REWARD = 100.0
 GUARD_MOVEMENT_SPEED = 1.0
 GUARD_SIZE = 20
 GUARD_COLOR = (255, 50, 50)  # Red
-GUARD_VISION_RANGE = TILE_SIZE * 8  # 8 tiles = 512 pixels
-GUARD_VISION_ANGLE = 60  # Degrees (cone of vision)
+GUARD_VISION_RANGE = TILE_SIZE * 5
+GUARD_VISION_ANGLE = 45  # Degrees (cone of vision)
 GUARD_CHASE_SPEED = 1.5
-GUARD_PATROL_PAUSE_TIME = 60  # Frames
+GUARD_PATROL_PAUSE_TIME = 90  # Frames
 GUARD_ALERT_COLOR = (255, 150, 0)  # Orange when alerted
 GUARD_DETECTION_TIME = 0.3  # Seconds to full detection
-GUARD_SHOOT_RANGE = TILE_SIZE * 6  # Can shoot within 6 tiles
+GUARD_SHOOT_RANGE = TILE_SIZE * 5  # Can shoot within 5 tiles
 NUM_GUARDS = 4  # Will be overridden by JSON map
 
 # Enemy shooting settings
@@ -57,7 +57,7 @@ OBSTACLE_MAX_SIZE = 120
 
 # Map layout settings
 USE_JSON_MAP = True  # Use JSON map loader
-JSON_MAP_PATH = "data/level1.json"
+JSON_MAP_PATH = "data/level_easy.json"
 WALL_COLOR = (60, 60, 70)  # Dark blue-gray for walls
 FLOOR_COLOR = (40, 40, 45)  # Very dark gray for floor
 OBJECTIVE_COLOR = (255, 215, 0)  # Gold for objectives
@@ -79,15 +79,10 @@ DISTANCE_REWARD_SCALE = 0.5  # Reward for getting closer to enemies
 
 # Action space (discrete)
 ACTIONS = {
-    0: (0, 0),      # Stay still
     1: (0, 1),      # Up
     2: (0, -1),     # Down
     3: (-1, 0),     # Left
     4: (1, 0),      # Right
-    5: (-1, 1),     # Up-Left
-    6: (1, 1),      # Up-Right
-    7: (-1, -1),    # Down-Left
-    8: (1, -1),     # Down-Right
 }
 NUM_ACTIONS = len(ACTIONS)
 

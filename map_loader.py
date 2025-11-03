@@ -10,7 +10,6 @@ from dataclasses import dataclass
 class GuardData:
     """Guard configuration from JSON"""
     pos: Tuple[int, int]
-    patrol: List[Tuple[int, int]]
     fov_deg: float = 60.0
     range_tiles: float = 8.0
     speed: float = 1.0
@@ -45,10 +44,8 @@ class MapData:
         # Parse guards
         self.guards = []
         for g in data.get('guards', []):
-            patrol_points = [tuple(p) for p in g['patrol']]
             guard = GuardData(
                 pos=tuple(g['pos']),
-                patrol=patrol_points,
                 fov_deg=g.get('fov_deg', 60.0),
                 range_tiles=g.get('range_tiles', 8.0),
                 speed=g.get('speed', 1.0),

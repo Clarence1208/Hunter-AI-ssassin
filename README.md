@@ -71,28 +71,22 @@ python main.py --mode play
 ```
 
 **Controls:**
-- `WASD` or `Arrow Keys` - Move player
+- `WASD` or `Arrow Keys` or Click - Move player
 - `SPACE` - Toggle vision rays display
 - `V` - Toggle enemy vision cones
 - `R` - Reset game
 - `ESC` - Quit
 
-### Demo Mode
-Watch random actions being executed:
-```bash
-python main.py --mode demo --episodes 5
-```
-
-### Test RL Interface
-Test the environment's RL interface:
-```bash
-python main.py --mode test
-```
-
 ### Headless Mode
 Run without rendering (useful for training):
 ```bash
 python main.py --mode play --no-render
+
+```
+### Training RL Mode
+Run with rendering :
+```bash
+python agent.py train 100 
 ```
 
 ## Reinforcement Learning Integration
@@ -111,15 +105,10 @@ The observation is a continuous vector containing:
 ### Action Space
 
 Discrete action space with 9 actions:
-- 0: Stay still
 - 1: Move up
 - 2: Move down
 - 3: Move left
 - 4: Move right
-- 5: Move up-left
-- 6: Move up-right
-- 7: Move down-left
-- 8: Move down-right
 
 ### Reward Structure
 
@@ -128,72 +117,6 @@ Discrete action space with 9 actions:
 - **Win (all enemies eliminated)**: +500
 - **Step penalty**: -0.1 (encourages efficiency)
 - **Distance reward**: Small positive reward for getting closer to enemies
-
-### Example RL Integration
-
-```python
-from game_env import HunterAssassinEnv
-import numpy as np
-
-# Create environment
-env = HunterAssassinEnv(render_mode=False)  # Set to True for visualization
-
-# Training loop example
-for episode in range(1000):
-    obs = env.reset()
-    done = False
-    episode_reward = 0
-    
-    while not done:
-        # Your RL agent selects action here
-        action = your_agent.select_action(obs)
-        
-        # Take action
-        obs, reward, done, info = env.step(action)
-        episode_reward += reward
-        
-        # Train your agent here
-        your_agent.learn(obs, action, reward, done)
-    
-    print(f"Episode {episode}: Reward = {episode_reward}, Kills = {info['kills']}")
-```
-
-### Integration with Popular RL Frameworks
-
-#### Stable-Baselines3
-Create a Gym wrapper:
-```python
-import gymnasium as gym
-from gymnasium import spaces
-
-class GymHunterEnv(gym.Env):
-    def __init__(self):
-        self.env = HunterAssassinEnv(render_mode=False)
-        self.observation_space = spaces.Box(
-            low=0, high=1, 
-            shape=(self.env.get_observation_space_size(),), 
-            dtype=np.float32
-        )
-        self.action_space = spaces.Discrete(self.env.get_action_space_size())
-    
-    def reset(self, seed=None, options=None):
-        super().reset(seed=seed)
-        obs = self.env.reset()
-        return obs, {}
-    
-    def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-        return obs, reward, done, False, info
-```
-
-#### PyTorch/Custom RL
-The environment can be used directly with custom implementations:
-```python
-# The env.step() and env.reset() methods follow standard conventions
-obs = env.reset()
-action = model.forward(obs)
-next_obs, reward, done, info = env.step(action)
-```
 
 ## Configuration
 
@@ -223,48 +146,17 @@ The game implements proper ray casting for:
 
 ### Modular Enemy AI
 Enemy behavior is state-based:
-- **Patrol**: Follow waypoints when no player detected
+- **Random**: When no player detected with influence to follow the current direction
 - **Chase**: Pursue player when in line of sight
 - **Alert**: Investigate last known player position
 
-### RL-Ready Design
-- Clear observation/action/reward structure
-- Episode management with proper reset
-- Info dictionary for debugging and metrics
-- Configurable rendering (can run headless)
-
 ## Development
-
-### Adding New Features
-
-**New Enemy Behavior**:
-Edit the `Enemy` class in `entities.py` and add new states to the AI.
-
-**Different Observation Types**:
-Modify `_get_observation()` in `game_env.py` to add or change observations.
-
-**New Reward Shaping**:
-Adjust reward calculations in the `step()` method of `game_env.py`.
-
-**Different Map Layouts**:
-Modify `_generate_obstacles()` in `game_env.py` for custom level designs.
-
 ## Performance
 
 - Runs at 60 FPS with rendering
 - Can run much faster in headless mode for training
 - Supports adjustable game speed via `config.GAME_SPEED`
 
-## Future Extensions
-
-Some ideas for extending the game:
-- Save/load trained agents
-- Multiple difficulty levels
-- Procedural level generation
-- Different enemy types with varied behaviors
-- Power-ups and special abilities
-- Multiplayer support
-- Level editor
 
 ## License
 
@@ -279,13 +171,8 @@ Built with:
 
 
 ### TO DO : 
-- Remove le ray autour du joueur
-- Améliorer le comportement des ennemis (chemin aléatoire ++)
-- Fix ray des ennemis (comme pour le joueur)
-- Modifier la map 
-- Fix le path du joueur quand on repasse en manuel
+- Amélirorer le QT agent
+- La mort de l'agent ne relance pas toujours un épisode.
+- Les ennemis ne démarent si on est en mode click pour bouger le joueur (mais on s'en fiche pour le RL)
 - Trouver des beaux sprites ennemis
-- Voir pourquoi ça prend autant de cpu (wtf) - optimisation
-- Vitesse du jeu
-- Prototype d'IA
-- Tej les fichiers d'IA qui servent à rien
+- Voir pourquoi ça prend autant de cpu (wtf) - optimisation (J'ai plus le comportement ?)
