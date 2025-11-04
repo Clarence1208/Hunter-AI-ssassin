@@ -28,7 +28,7 @@ class SimpleAgent:
         self.total_reward = 0
         self.episode_rewards = []
 
-        print("✓ Agent initialisé (4 actions, Q-table vide en mémoire)")
+        print("Agent initialisé (4 actions, Q-table vide en mémoire)")
 
     def get_state(self, observation: np.ndarray) -> Tuple[int, int]:
         """

@@ -63,7 +63,7 @@ class HunterAssassinEnv(arcade.Window):
         self.episode_step = 0
         self.total_reward = 0.0
         self.previous_min_enemy_distance = None
-        self.game_started = False  # Game pauses until first player movement
+        self.game_started = True
         
         # Input tracking for manual control
         self.key_state = {
@@ -144,7 +144,7 @@ class HunterAssassinEnv(arcade.Window):
         self.episode_step = 0
         self.total_reward = 0.0
         self.previous_min_enemy_distance = None
-        self.game_started = not config.PAUSE_UNTIL_FIRST_MOVE
+        self.game_started = True
         
         # Create obstacles and entities based on layout mode
         if config.USE_JSON_MAP:
